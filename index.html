@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soccer Players Performance Ratings</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+</head>
+<body>
+  <header>
+    <nav>
+      <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Players</a></li>
+        <li><a href="#">Teams</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
+    <div class="hero">
+      <h1>Soccer Players Performance Ratings</h1>
+      <p>Find out which soccer players are performing the best and get detailed statistics on their performances.</p>
+      <a href="#" class="btn">Learn More</a>
+    </div>
+  </header>
+  <main>
+    <section>
+      <div id="my_dataviz"></div>
+      <form>
+        <label for="search">Search by name:</label>
+        <input type="text" id="search" name="search">
+        <button type="button" onclick="searchTable()">Search</button>
+        <button type="button" onclick="resetTable()">Reset</button>
+      </form>
+      <div class="table-container">
+        <table id="csvTable">
+          </tbody>
+        </table>
+      </div> 
+      <div class="pagination">
+
+      </div>
+    </section>
+  </main>
+  <footer>
+  </footer>
+  <script>
+    var columns = ["long_name", "nationality", "player_positions", "age", "height_cm", "value_eur", "pace", "shooting", "passing", "dribbling", "defending", "physic", "overall"];
+    var rows = [];
+    var currentPage = 1;
+    var rowsPerPage = 15;
+    var numPages;
+    
+    Papa.parse("players_21.csv", {
+      download: true,
+      header: true,
+      complete: function(results) {
+        rows = results.data;
+        rows.sort(function(a, b) { return b.overall - a.overall }); // sortiranje po stupcu "overall"
+        numPages = Math.ceil(rows.length / rowsPerPage);
+        renderTable(currentPage);
+        renderPagination();
+      }
+    });
+    
+    function renderTable(page) {
+      var table = "<thead><tr>";
+      columns.forEach(function(column) {
+        table += "<th>" + column.charAt(0).toUpperCase() + column.slice(1) + "</th>";
+      });
+      table += "</tr></thead><tbody>";
+      for (var i = (page - 1) * rowsPerPage; i < page * rowsPerPage; i++) {
+        if (i >= rows.length) {
+          break;
+        }
+        var row = rows[i];
+        table += "<tr>";
+        columns.forEach(function(column) {
+          table += "<td>" + row[column] + "</td>";
+        });
+        table += "</tr>";
+      }
+      table += "</tbody>";
+      document.getElementById("csvTable").innerHTML = table;
+    }
+    
+    function searchTable() {
+      var searchText = document.getElementById("search").value.toLowerCase();
+      var filteredRows = [];
+      
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        
+        if (row.hasOwnProperty('long_name') && row.long_name !== null && row.long_name.toLowerCase().includes(searchText)) {
+          filteredRows.push(row);
+        }
+      }
+      
+      if (filteredRows.length == 0) {
+        document.getElementById("csvTable").innerHTML = "";
+        document.querySelector(".pagination").innerHTML = "";
+      } else {
+        rows = filteredRows;
+        numPages = Math.ceil(rows.length / rowsPerPage);
+        currentPage = 1;
+        renderTable(currentPage);
+        renderPagination();
+      }
+    }
+
+    function resetTable() {
+      Papa.parse("players_21.csv", {
+        download: true,
+        header: true,
+        complete: function(results) {
+          rows = results.data;
+          rows.sort(function(a, b) { return b.overall - a.overall }); // sortiranje po stupcu "overall"
+          numPages = Math.ceil(rows.length / rowsPerPage);
+          renderTable(currentPage);
+          renderPagination();
+        }
+      });
+}
+    
+    
+    function renderPagination() {
+      var pagination = "";
+      var numButtonsToShow = 5; // Broj poveznica za stranice koje će se prikazati odmah
+      var numButtonsBeforeAfter = 2; // Broj poveznica za stranice prije i nakon trenutne stranice koje će se prikazati
+    
+      // Poveznice za prve stranice
+      if (currentPage > 1) {
+        pagination += "<button onclick='goToPage(1)'>1</button>";
+        if (currentPage > 2) {
+          pagination += "<span>...</span>";
+        }
+      }
+    
+      // Poveznice za srednje stranice
+      var start = Math.max(currentPage - numButtonsBeforeAfter, 1);
+      var end = Math.min(currentPage + numButtonsBeforeAfter, numPages);
+      if (start > numButtonsToShow) {
+        pagination += "<span>...</span>";
+      }
+      for (var i = start; i <= end; i++) {
+        pagination += "<button onclick='goToPage(" + i + ")' " + (i == currentPage ? "class='active'" : "") + ">" + i + "</button>";
+      }
+      if (end < numPages - numButtonsToShow + 1) {
+        pagination += "<span>...</span>";
+      }
+    
+      // Poveznice za zadnje stranice
+      if (currentPage < numPages) {
+        if (currentPage < numPages - 1) {
+          pagination += "<span>...</span>";
+        }
+        pagination += "<button onclick='goToPage(" + numPages + ")'>" + numPages + "</button>";
+      }
+    
+      document.querySelector(".pagination").innerHTML = pagination;
+    }
+    
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable(currentPage);
+        renderPagination();
+      }
+    }
+    
+    function nextPage() {
+      if (currentPage < numPages) {
+        currentPage++;
+        renderTable(currentPage);
+        renderPagination();
+      }
+    }
+    
+    function goToPage(page) {
+      currentPage = page;
+      renderTable(currentPage);
+      renderPagination();
+    }
+    var margin = { top: 30, right: 0, bottom: 10, left: 90 },
+    width = 1900 - margin.left - margin.right,
+    height = 1200 - margin.top - margin.bottom;
+  
+  // Append the svg object to the body of the page
+  var svg = d3
+    .select("#my_dataviz")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  
+  d3.csv("players_21.csv", function (data) {
+    // Extract the list of dimensions we want to keep in the plot
+    var dimensions = [
+      "nationality",
+      "player_positions",
+      "age",
+      "height_cm",
+      "value_eur",
+      "pace",
+      "shooting",
+      "passing",
+      "dribbling",
+      "defending",
+      "physic",
+      "overall",
+    ];
+  
+    // For each dimension, build a scale and store them in the y object
+    var y = {};
+    for (var i in dimensions) {
+      var name = dimensions[i];
+      if (name === "nationality" || name === "player_positions") {
+        y[name] = d3
+          .scalePoint()
+          .domain(data.map(function (d) { return d[name]; }).slice(0, 70))
+          .range([height, 0])
+          .padding(0.5);
+      } else {
+        y[name] = d3.scaleLinear()
+          .domain(d3.extent(data, function (d) { return +d[name]; }))
+          .range([height, 0]);
+      }
+    }
+  
+    // Build the X scale -> it finds the best position for each Y axis
+    var x = d3.scalePoint()
+      .range([0, width])
+      .padding(1)
+      .domain(dimensions);
+  
+    // The path function takes a row of the csv as input and returns x and y coordinates of the line to draw for this row.
+    function path(d) {
+      return d3.line()(dimensions.map(function (p) { return [x(p), y[p](d[p])]; }));
+    }
+  
+    // Draw the lines
+    var paths = svg
+      .selectAll("myPath")
+      .data(data.slice(0, 70)) // Display only the first 70 data points
+      .enter()
+      .append("path")
+      .attr("d", path)
+      .style("fill", "none")
+      .style("stroke", "#69b3a2")
+      .style("stroke-width", "2px")
+      .style("opacity", 0.5)
+      .on("mouseover", function () {
+        d3.select(this).style("stroke-width", "4px");
+      })
+      .on("mouseout", function () {
+        d3.select(this).style("stroke-width", "2px");
+      });
+  
+    // Add the axes and axis titles
+    var axis = svg.selectAll(".axis")
+      .data(dimensions)
+      .enter()
+      .append("g")
+      .attr("class", "axis")
+      .attr("transform", function (d) { return "translate(" + x(d) + ")"; });
+  
+
+        axis.append("g")
+        .each(function (d) {
+          if (d != null && (d === "nationality" || d === "player_positions")) {
+            d3.select(this).call(d3.axisLeft(y[d]).tickPadding(10));
+          } else {
+            d3.select(this).call(d3.axisLeft(y[d]).ticks(6).tickFormat(d3.format(".2s")));
+          }
+        });
+    
+      axis.append("text")
+        .style("text-anchor", "middle")
+        .attr("y", -9)
+        .text(function (d) { return d; })
+        .style("fill", "black")
+        .style("font-size", "22px"); // Set the font size to 22 pixels
+    
+      // Update font size for all text elements within the SVG
+      svg.selectAll("text")
+        .style("font-size", "16px"); // Set the font size to 16 pixels
+    
+      function selectPlayer(playerId) {
+        // Get the data for the selected player
+        var selectedPlayer = data[playerId];
+    
+        // Update the graph with only the values of the selected player
+        var selectedPaths = svg
+          .selectAll("path")
+          .data([selectedPlayer], function (d) { return d.nationality; });
+    
+        // Remove previous paths
+        selectedPaths.exit().remove();
+    
+        // Add new paths for the selected player
+        selectedPaths.enter()
+          .append("path")
+          .merge(selectedPaths)
+          .attr("d", path)
+          .style("fill", "none")
+          .style("stroke", "red")
+          .style("stroke-width", "2px")
+          .style("opacity", 0.5);
+    
+        // Reset the stroke color of non-selected players
+        svg.selectAll("path")
+          .filter(function (d) { return d !== selectedPlayer; })
+          .style("stroke", "#69b3a2");
+    
+        // Update the table to highlight the selected player
+        d3.selectAll("tr").style("background-color", function (d, i) {
+          return i === playerId ? "yellow" : "white";
+        });
+      }
+    
+
+d3.selectAll("tr")
+.on("click", function (d, i) {
+  selectPlayer(i);
+  d3.selectAll("tr").classed("selected", false); // Remove 'selected' class from all rows
+  d3.select(this).classed("selected", true); // Add 'selected' class to the clicked row
+});
+
+      
+  });
+  
+  </script>    
+
+</body>
+</html>
